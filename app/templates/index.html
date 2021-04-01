@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--
+Copyright © 2021 Markus W Mahlberg
+This work is free. You can redistribute it and/or modify it under the
+terms of the Do What The Fuck You Want To Public License, Version 2,
+as published by Sam Hocevar. See the LICENSE file for more details.
+-->
+<html>
+<head>
+  <title>Image example</title>
+</head>
+<body>
+  <h1>Image Example</h1>
+  <p><a href="http://localhost:9000">Minio</a></p>
+  <h2>Upload image</h2>
+  <form action="/upload"
+        enctype="multipart/form-data"
+        method="post">
+    <input name="file"
+          type="file"> <input type="submit"
+          value="Upload">
+  </form>
+  <h2>Images</h2>
+  <div>
+    {%- for image in images -%}
+    <p><img src="{{prefix}}/{{image.object_name}}"></p>{% endfor -%}
+  </div>
+</body>
+</html>

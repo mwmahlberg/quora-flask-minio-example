@@ -1,0 +1,56 @@
+version: "3"
+services:
+  minio:
+    image: minio/minio:RELEASE.2021-03-26T00-00-41Z
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+    environment:
+      # The two anchors are used below. Should you want to change the passwords,
+      # do so here. The references get this automatically.
+      MINIO_ROOT_USER: &user minio
+      MINIO_ROOT_PASSWORD: &password minio123
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # The minio client. We need this to set up minio for our needs
+  mc:
+    image: minio/mc
+    depends_on: ["minio"]
+    environment:
+      MINIO_ROOT_USER: *user
+      MINIO_ROOT_PASSWORD: *password
+
+    # In the entrypoint, we connect to the minio instance, create the bucket images
+    # and make it available to the public for reading.
+    entrypoint: >
+      /bin/sh -c "
+      curl --retry 3 --retry-connrefused --retry-delay 2 http://minio:9000 &&
+      /usr/bin/mc config host add srv http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      /usr/bin/mc mb srv/images &&
+      /usr/bin/mc policy set public srv/images
+      "
+
+  # The actual application. You can access it via http://localhost:8080
+  app:
+    build: app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - minio
+    environment:
+      # URL at which the application will access minio from within
+      # the docker environment. Services can be accessed via their name.
+      MINIO: 'minio:9000'
+      # Prefix that will be used to actually access the data
+      # Since we expose the port of minio on 9000, it should be available
+      MINIO_PREFIX: 'http://localhost:9000/images'
+      MINIO_ROOT_USER: *user
+      MINIO_ROOT_PASSWORD: *password
+volumes:
+  minio-data:
